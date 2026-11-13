@@ -69,6 +69,24 @@ class Database {
             }
         });
     }
+
+    // Finished transactions are never read again — every reader of this
+    // array (processTransactions, the versionchange lookup in FDBDatabase,
+    // and the close steps) filters on _state !== "finished", so removing
+    // them cannot change behavior. Until they are removed, however, each
+    // finished transaction stays reachable along with its _rollbackLog,
+    // which retains closures capturing the *previous* value of every
+    // record the transaction wrote (kept for abort rollback). Under a
+    // write-heavy workload — e.g. a single large record rewritten many
+    // times per minute — this leaks one FDBTransaction plus a full
+    // rollback log per write, without bound.
+    public cleanupFinishedTransactions() {
+        for (let i = this.transactions.length - 1; i >= 0; i--) {
+            if (this.transactions[i]._state === "finished") {
+                this.transactions.splice(i, 1);
+            }
+        }
+    }
 }
 
 export default Database;
