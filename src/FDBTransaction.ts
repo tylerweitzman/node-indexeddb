@@ -89,6 +89,10 @@ class FDBTransaction extends FakeEventTarget {
         });
 
         this._state = "finished";
+        // Drop finished transactions from the database queue so their
+        // rollback logs become collectable
+        // (see Database.cleanupFinishedTransactions)
+        this.db._rawDatabase.cleanupFinishedTransactions();
     }
 
     public abort() {
@@ -240,6 +244,11 @@ class FDBTransaction extends FakeEventTarget {
                 const event = new FakeEvent("complete");
                 this.dispatchEvent(event);
             }
+
+            // Drop finished transactions from the database queue so their
+            // rollback logs become collectable
+            // (see Database.cleanupFinishedTransactions)
+            this.db._rawDatabase.cleanupFinishedTransactions();
         }
     }
 
